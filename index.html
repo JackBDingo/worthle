@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Worthle is a daily word-value puzzle where letters add up to the target cents."
+    />
+    <meta name="theme-color" content="#102820" />
+    <title>Worthle</title>
+    <link rel="icon" href="./assets/coin.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar" aria-label="Worthle header">
+        <div>
+          <p class="eyebrow">Daily word value</p>
+          <h1>Worthle</h1>
+        </div>
+        <button class="icon-button" id="statsButton" type="button" aria-label="Open stats">
+          <span aria-hidden="true">¢</span>
+        </button>
+      </header>
+
+      <section class="target-band" aria-label="Today's target">
+        <div class="coin-stack" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <div>
+          <span class="label">Target</span>
+          <strong id="targetValue">$0.00</strong>
+        </div>
+        <div>
+          <span class="label">Letters</span>
+          <strong id="letterCount">0</strong>
+        </div>
+        <div>
+          <span class="label">Puzzle</span>
+          <strong id="puzzleNumber">#000</strong>
+        </div>
+      </section>
+
+      <section class="game-board" aria-label="Guess grid">
+        <div id="board" class="board"></div>
+      </section>
+
+      <section class="status-row" aria-live="polite">
+        <p id="message">Make the word match the money.</p>
+        <button id="shareButton" class="text-button" type="button" hidden>Share</button>
+      </section>
+
+      <section id="keyboard" class="keyboard" aria-label="Keyboard"></section>
+    </main>
+
+    <dialog id="statsDialog" class="modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <h2>Stats</h2>
+          <button class="icon-button small" value="close" aria-label="Close stats">×</button>
+        </div>
+        <div class="stat-grid">
+          <div><strong id="playedStat">0</strong><span>Played</span></div>
+          <div><strong id="winStat">0%</strong><span>Win rate</span></div>
+          <div><strong id="streakStat">0</strong><span>Streak</span></div>
+          <div><strong id="bestStat">0</strong><span>Best</span></div>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

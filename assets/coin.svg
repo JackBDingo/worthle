@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Worthle coin">
+  <defs>
+    <linearGradient id="g" x1="16" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="0.48" stop-color="#d99a2b"/>
+      <stop offset="1" stop-color="#8c5a13"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="54" fill="url(#g)" stroke="#40280a" stroke-width="6"/>
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#fff0b8" stroke-width="5" opacity=".75"/>
+  <text x="64" y="81" text-anchor="middle" font-family="Georgia, serif" font-size="54" font-weight="800" fill="#2a1a05">¢</text>
+</svg>
