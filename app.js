@@ -1,4 +1,4 @@
-const ANSWERS = [
+const SEED_WORDS = [
   "cabin", "apple", "brave", "dream", "focus", "light", "money", "worth",
   "value", "penny", "score", "daily", "climb", "quick", "trade", "graph",
   "maker", "field", "craft", "pilot", "forge", "stack", "logic", "tempo",
@@ -6,24 +6,34 @@ const ANSWERS = [
   "grain", "flint", "crown", "shift", "solid", "magic", "trace", "index",
   "model", "agent", "human", "build", "clean", "sharp", "stone", "metal",
   "paper", "novel", "pixel", "press", "route", "sound", "watch", "learn",
-  "scale", "voice", "trial", "quest", "frame", "level", "point", "token"
+  "scale", "voice", "trial", "quest", "frame", "level", "point", "token",
+  "anchor", "budget", "signal", "market", "silver", "rocket", "bridge",
+  "garden", "honest", "motion", "parcel", "stream", "window", "yellow"
 ];
 
-const MAX_GUESSES = 6;
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
-const KEY_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const START_DATE = Date.UTC(2026, 0, 1);
 const MS_PER_DAY = 86400000;
 
-const board = document.querySelector("#board");
-const keyboard = document.querySelector("#keyboard");
+const form = document.querySelector("#wordForm");
+const input = document.querySelector("#wordInput");
 const message = document.querySelector("#message");
 const targetValue = document.querySelector("#targetValue");
-const letterCount = document.querySelector("#letterCount");
+const foundCount = document.querySelector("#foundCount");
 const puzzleNumber = document.querySelector("#puzzleNumber");
+const currentWord = document.querySelector("#currentWord");
+const currentValue = document.querySelector("#currentValue");
+const currentDelta = document.querySelector("#currentDelta");
+const meter = document.querySelector(".meter");
+const foundWords = document.querySelector("#foundWords");
+const emptyStateEl = document.querySelector("#emptyState");
+const attemptCount = document.querySelector("#attemptCount");
 const shareButton = document.querySelector("#shareButton");
 const statsButton = document.querySelector("#statsButton");
 const statsDialog = document.querySelector("#statsDialog");
+const valuesButton = document.querySelector("#valuesButton");
+const valuesDialog = document.querySelector("#valuesDialog");
+const valueGrid = document.querySelector("#valueGrid");
 
 let puzzle;
 let state;
@@ -40,31 +50,32 @@ function cents(value) {
   return "$0." + String(value).padStart(2, "0");
 }
 
+function normalizeWord(value) {
+  return value.toLowerCase().replace(/[^a-z]/g, "");
+}
+
 function getPuzzle() {
   const today = new Date();
   const localMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const dayIndex = Math.floor((localMidnight.getTime() - START_DATE) / MS_PER_DAY);
-  const answer = ANSWERS[((dayIndex % ANSWERS.length) + ANSWERS.length) % ANSWERS.length];
+  const seed = SEED_WORDS[((dayIndex % SEED_WORDS.length) + SEED_WORDS.length) % SEED_WORDS.length];
   return {
-    answer,
     id: dayIndex + 1,
     dateKey: localMidnight.toISOString().slice(0, 10),
-    target: wordValue(answer),
-    length: answer.length
+    target: wordValue(seed)
   };
 }
 
 function emptyState() {
   return {
-    guesses: [],
-    current: "",
-    status: "playing",
-    keyboard: {}
+    found: [],
+    attempts: 0,
+    lastValue: 0
   };
 }
 
 function loadState() {
-  const raw = localStorage.getItem("worthle-state-" + puzzle.dateKey);
+  const raw = localStorage.getItem("worthle-hunt-" + puzzle.dateKey);
   if (!raw) return emptyState();
 
   try {
@@ -76,197 +87,118 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem("worthle-state-" + puzzle.dateKey, JSON.stringify(state));
+  localStorage.setItem("worthle-hunt-" + puzzle.dateKey, JSON.stringify(state));
 }
 
 function loadStats() {
   try {
     return {
-      played: 0,
-      wins: 0,
+      days: 0,
+      total: 0,
       streak: 0,
       best: 0,
-      lastPlayed: "",
-      ...JSON.parse(localStorage.getItem("worthle-stats") || "{}")
+      lastScoredDate: "",
+      ...JSON.parse(localStorage.getItem("worthle-hunt-stats") || "{}")
     };
   } catch {
-    return { played: 0, wins: 0, streak: 0, best: 0, lastPlayed: "" };
+    return { days: 0, total: 0, streak: 0, best: 0, lastScoredDate: "" };
   }
 }
 
 function saveStats(stats) {
-  localStorage.setItem("worthle-stats", JSON.stringify(stats));
+  localStorage.setItem("worthle-hunt-stats", JSON.stringify(stats));
 }
 
-function commitStats(won) {
-  const completionKey = "worthle-complete-" + puzzle.dateKey;
-  if (localStorage.getItem(completionKey)) return;
+function yesterdayKey(dateKey) {
+  const date = new Date(dateKey + "T00:00:00");
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
 
+function recordFirstFind() {
   const stats = loadStats();
-  stats.played += 1;
-  if (won) {
-    stats.wins += 1;
-    stats.streak += 1;
-    stats.best = Math.max(stats.best, stats.streak);
-  } else {
-    stats.streak = 0;
-  }
-  stats.lastPlayed = puzzle.dateKey;
+  if (stats.lastScoredDate === puzzle.dateKey) return;
+
+  stats.days += 1;
+  stats.streak = stats.lastScoredDate === yesterdayKey(puzzle.dateKey) ? stats.streak + 1 : 1;
+  stats.lastScoredDate = puzzle.dateKey;
   saveStats(stats);
-  localStorage.setItem(completionKey, "1");
-  renderStats();
 }
 
-function evaluateGuess(guess) {
-  const answer = puzzle.answer;
-  const result = Array(puzzle.length).fill("absent");
-  const remaining = {};
-
-  for (let i = 0; i < answer.length; i += 1) {
-    if (guess[i] === answer[i]) {
-      result[i] = "correct";
-    } else {
-      remaining[answer[i]] = (remaining[answer[i]] || 0) + 1;
-    }
-  }
-
-  for (let i = 0; i < guess.length; i += 1) {
-    if (result[i] === "correct") continue;
-    if (remaining[guess[i]]) {
-      result[i] = "present";
-      remaining[guess[i]] -= 1;
-    }
-  }
-
-  return result;
-}
-
-function updateKeyboard(guess, result) {
-  const rank = { absent: 1, present: 2, correct: 3 };
-  [...guess].forEach((letter, index) => {
-    const status = result[index];
-    if (!state.keyboard[letter] || rank[status] > rank[state.keyboard[letter]]) {
-      state.keyboard[letter] = status;
-    }
-  });
-}
-
-function scoreClass(value) {
-  const diff = Math.abs(value - puzzle.target);
-  if (diff === 0) return "exact";
-  if (diff <= 5) return "close";
-  return "off";
-}
-
-function scoreLabel(value) {
-  const diff = value - puzzle.target;
-  if (diff === 0) return "hit";
-  return Math.abs(diff) + (diff < 0 ? " low" : " high");
-}
-
-function renderBoard() {
-  board.style.setProperty("--letters", puzzle.length);
-  board.innerHTML = "";
-
-  for (let rowIndex = 0; rowIndex < MAX_GUESSES; rowIndex += 1) {
-    const row = document.createElement("div");
-    row.className = "row";
-    row.style.setProperty("--letters", puzzle.length);
-
-    const submitted = state.guesses[rowIndex];
-    const active = rowIndex === state.guesses.length ? state.current : "";
-    const letters = submitted?.word || active;
-    const result = submitted ? evaluateGuess(submitted.word) : [];
-
-    for (let i = 0; i < puzzle.length; i += 1) {
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      if (result[i]) tile.classList.add(result[i]);
-      tile.textContent = letters[i] || "";
-      row.appendChild(tile);
-    }
-
-    const scoreTile = document.createElement("div");
-    scoreTile.className = "score-tile";
-    if (submitted) {
-      const value = wordValue(submitted.word);
-      scoreTile.classList.add(scoreClass(value));
-      scoreTile.textContent = scoreLabel(value);
-      scoreTile.title = submitted.word.toUpperCase() + " = " + cents(value);
-    } else {
-      scoreTile.textContent = rowIndex === state.guesses.length && state.current
-        ? cents(wordValue(state.current))
-        : "";
-      if (!scoreTile.textContent) scoreTile.classList.add("empty");
-    }
-    row.appendChild(scoreTile);
-    board.appendChild(row);
-  }
-}
-
-function renderKeyboard() {
-  keyboard.innerHTML = "";
-  KEY_ROWS.forEach((letters, rowIndex) => {
-    const row = document.createElement("div");
-    row.className = "key-row";
-
-    if (rowIndex === 2) row.appendChild(keyButton("enter", "Enter", "wide"));
-
-    [...letters].forEach((letter) => {
-      const button = keyButton(letter, letter);
-      if (state.keyboard[letter]) button.classList.add(state.keyboard[letter]);
-      row.appendChild(button);
-    });
-
-    if (rowIndex === 2) row.appendChild(keyButton("backspace", "⌫", "wide"));
-    keyboard.appendChild(row);
-  });
-}
-
-function keyButton(value, label, extra = "") {
-  const button = document.createElement("button");
-  button.className = ("key " + extra).trim();
-  button.type = "button";
-  button.dataset.key = value;
-  button.textContent = label;
-  button.setAttribute("aria-label", value);
-  return button;
+function recordFoundWord() {
+  const stats = loadStats();
+  stats.total += 1;
+  stats.best = Math.max(stats.best, state.found.length);
+  saveStats(stats);
 }
 
 function renderStats() {
   const stats = loadStats();
-  document.querySelector("#playedStat").textContent = stats.played;
-  document.querySelector("#winStat").textContent = stats.played
-    ? Math.round((stats.wins / stats.played) * 100) + "%"
-    : "0%";
+  document.querySelector("#playedStat").textContent = stats.days;
+  document.querySelector("#totalStat").textContent = stats.total;
   document.querySelector("#streakStat").textContent = stats.streak;
   document.querySelector("#bestStat").textContent = stats.best;
 }
 
-function renderMessage() {
-  if (state.status === "won") {
-    message.textContent = "Banked it in " + state.guesses.length + ".";
-    shareButton.hidden = false;
-    return;
-  }
-  if (state.status === "lost") {
-    message.textContent = puzzle.answer.toUpperCase() + " was worth " + cents(puzzle.target) + ".";
-    shareButton.hidden = false;
-    return;
-  }
-  const remaining = puzzle.length - state.current.length;
-  message.textContent = state.current
-    ? cents(wordValue(state.current)) + " so far, " + remaining + " letters left."
-    : "Make the word match the money.";
+function describeValue(value) {
+  const diff = value - puzzle.target;
+  if (value === 0) return "Start typing";
+  if (diff === 0) return "Exact match";
+  return Math.abs(diff) + (diff < 0 ? " low" : " high");
+}
+
+function renderMeter() {
+  const word = normalizeWord(input.value);
+  const value = wordValue(word);
+  const diff = value - puzzle.target;
+
+  currentWord.textContent = word || "-";
+  currentValue.textContent = cents(value);
+  currentDelta.textContent = describeValue(value);
+
+  meter.classList.remove("hit", "low", "high");
+  if (value > 0 && diff === 0) meter.classList.add("hit");
+  if (value > 0 && diff < 0) meter.classList.add("low");
+  if (value > 0 && diff > 0) meter.classList.add("high");
+}
+
+function renderFoundWords() {
+  foundWords.innerHTML = "";
+  const sorted = [...state.found].sort((a, b) => a.localeCompare(b));
+
+  sorted.forEach((word) => {
+    const item = document.createElement("li");
+    const text = document.createElement("strong");
+    const value = document.createElement("span");
+    text.textContent = word;
+    value.textContent = cents(wordValue(word));
+    item.append(text, value);
+    foundWords.appendChild(item);
+  });
+
+  emptyStateEl.hidden = sorted.length > 0;
+}
+
+function renderValueGrid() {
+  valueGrid.innerHTML = "";
+  [...ALPHABET].forEach((letter) => {
+    const cell = document.createElement("div");
+    const strong = document.createElement("strong");
+    const span = document.createElement("span");
+    strong.textContent = letter.toUpperCase();
+    span.textContent = letterValue(letter);
+    cell.append(strong, span);
+    valueGrid.appendChild(cell);
+  });
 }
 
 function render() {
   targetValue.textContent = cents(puzzle.target);
-  letterCount.textContent = puzzle.length;
+  foundCount.textContent = state.found.length;
   puzzleNumber.textContent = "#" + String(puzzle.id).padStart(3, "0");
-  renderBoard();
-  renderKeyboard();
-  renderMessage();
+  attemptCount.textContent = state.attempts + (state.attempts === 1 ? " try" : " tries");
+  renderMeter();
+  renderFoundWords();
   renderStats();
 }
 
@@ -274,70 +206,40 @@ function setMessage(text) {
   message.textContent = text;
 }
 
-function submitGuess() {
-  if (state.status !== "playing") return;
-  if (state.current.length !== puzzle.length) {
-    setMessage("Need " + puzzle.length + " letters.");
-    return;
-  }
+function submitWord(event) {
+  event.preventDefault();
+  const word = normalizeWord(input.value);
+  const value = wordValue(word);
+  state.attempts += 1;
+  state.lastValue = value;
 
-  const guess = state.current.toLowerCase();
-  const result = evaluateGuess(guess);
-  const value = wordValue(guess);
-
-  state.guesses.push({ word: guess, value });
-  updateKeyboard(guess, result);
-  state.current = "";
-
-  if (guess === puzzle.answer) {
-    state.status = "won";
-    commitStats(true);
-  } else if (state.guesses.length >= MAX_GUESSES) {
-    state.status = "lost";
-    commitStats(false);
-  } else {
+  if (word.length < 2) {
+    setMessage("Use at least two letters.");
+  } else if (state.found.includes(word)) {
+    setMessage(word.toUpperCase() + " is already banked.");
+  } else if (value !== puzzle.target) {
     const diff = value - puzzle.target;
     setMessage(cents(value) + " is " + Math.abs(diff) + (diff < 0 ? " low." : " high."));
+  } else {
+    state.found.push(word);
+    recordFirstFind();
+    recordFoundWord();
+    setMessage("Banked " + word.toUpperCase() + ". Keep going.");
+    input.value = "";
   }
 
-  saveState();
-  render();
-}
-
-function pressKey(key) {
-  if (key === "Enter") {
-    submitGuess();
-    return;
-  }
-
-  if (key === "Backspace") {
-    if (state.status === "playing") {
-      state.current = state.current.slice(0, -1);
-      saveState();
-      render();
-    }
-    return;
-  }
-
-  const letter = key.toLowerCase();
-  if (state.status !== "playing" || !ALPHABET.includes(letter)) return;
-  if (state.current.length >= puzzle.length) return;
-  state.current += letter;
   saveState();
   render();
 }
 
 function shareText() {
-  const lines = state.guesses.map(({ word }) => {
-    const result = evaluateGuess(word);
-    return result
-      .map((status) => status === "correct" ? "🟩" : status === "present" ? "🟨" : "⬜")
-      .join("");
-  });
+  const found = state.found.length;
+  const tries = state.attempts;
   return [
-    "Worthle #" + puzzle.id + " " + (state.status === "won" ? state.guesses.length : "X") + "/" + MAX_GUESSES,
+    "Worthle #" + puzzle.id,
     "Target " + cents(puzzle.target),
-    ...lines
+    found + " word" + (found === 1 ? "" : "s") + " banked in " + tries + (tries === 1 ? " try" : " tries"),
+    state.found.length ? state.found.map((word) => word.toUpperCase()).sort().join(", ") : "No words banked yet"
   ].join("\n");
 }
 
@@ -356,29 +258,24 @@ async function shareResult() {
 }
 
 function bindEvents() {
-  document.addEventListener("keydown", (event) => {
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    pressKey(event.key);
+  form.addEventListener("submit", submitWord);
+  input.addEventListener("input", () => {
+    const normalized = normalizeWord(input.value);
+    if (input.value !== normalized) input.value = normalized;
+    renderMeter();
   });
-
-  keyboard.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
-    const key = button.dataset.key;
-    if (key === "enter") pressKey("Enter");
-    else if (key === "backspace") pressKey("Backspace");
-    else pressKey(key);
-  });
-
   shareButton.addEventListener("click", shareResult);
   statsButton.addEventListener("click", () => statsDialog.showModal());
+  valuesButton.addEventListener("click", () => valuesDialog.showModal());
 }
 
 function init() {
   puzzle = getPuzzle();
   state = loadState();
+  renderValueGrid();
   bindEvents();
   render();
+  input.focus();
 }
 
 init();

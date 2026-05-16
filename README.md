@@ -1,6 +1,6 @@
 # Worthle
 
-A daily Wordle-style word-value game. Each letter is worth its alphabet position in cents, and the daily answer must match the target value.
+A daily word-value hunt. Each letter is worth its alphabet position in cents, and players try to find as many words as possible that exactly match the daily target.
 
 ## Run locally
 
@@ -11,6 +11,6 @@ Then open http://localhost:4173.
 ## Notes
 
 - No backend required.
-- Daily puzzle selection is deterministic by local date.
+- Daily target selection is deterministic by local date.
 - Progress, completion, and stats are stored in localStorage.
-- The answer bank is curated in app.js.
+- The target seed bank is curated in app.js.

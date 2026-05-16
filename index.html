@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Worthle is a daily word-value puzzle where letters add up to the target cents."
+      content="Worthle is a daily word-value hunt where letters add up to the target cents."
     />
     <meta name="theme-color" content="#102820" />
     <title>Worthle</title>
@@ -16,7 +16,7 @@
     <main class="app-shell">
       <header class="topbar" aria-label="Worthle header">
         <div>
-          <p class="eyebrow">Daily word value</p>
+          <p class="eyebrow">Daily word hunt</p>
           <h1>Worthle</h1>
         </div>
         <button class="icon-button" id="statsButton" type="button" aria-label="Open stats">
@@ -33,8 +33,8 @@
           <strong id="targetValue">$0.00</strong>
         </div>
         <div>
-          <span class="label">Letters</span>
-          <strong id="letterCount">0</strong>
+          <span class="label">Found</span>
+          <strong id="foundCount">0</strong>
         </div>
         <div>
           <span class="label">Puzzle</span>
@@ -42,16 +42,47 @@
         </div>
       </section>
 
-      <section class="game-board" aria-label="Guess grid">
-        <div id="board" class="board"></div>
+      <section class="entry-panel" aria-label="Submit a word">
+        <form id="wordForm" autocomplete="off">
+          <label for="wordInput">Find words worth today’s target</label>
+          <div class="input-row">
+            <input
+              id="wordInput"
+              name="word"
+              type="text"
+              inputmode="text"
+              autocapitalize="none"
+              spellcheck="false"
+              minlength="2"
+              placeholder="Type any word"
+            />
+            <button class="text-button" type="submit">Bank</button>
+          </div>
+        </form>
+        <div class="meter" aria-label="Current word value">
+          <span id="currentWord">-</span>
+          <strong id="currentValue">$0.00</strong>
+          <span id="currentDelta">Start typing</span>
+        </div>
       </section>
 
       <section class="status-row" aria-live="polite">
-        <p id="message">Make the word match the money.</p>
-        <button id="shareButton" class="text-button" type="button" hidden>Share</button>
+        <p id="message">No length limit. Exact-value words count.</p>
+        <button id="shareButton" class="text-button ghost" type="button">Share</button>
       </section>
 
-      <section id="keyboard" class="keyboard" aria-label="Keyboard"></section>
+      <section class="word-list-panel" aria-label="Found words">
+        <div class="panel-heading">
+          <h2>Banked Words</h2>
+          <span id="attemptCount">0 tries</span>
+        </div>
+        <ol id="foundWords" class="found-words"></ol>
+        <p id="emptyState" class="empty-state">Find the first one and the board wakes up.</p>
+      </section>
+
+      <section class="value-strip" aria-label="Letter values">
+        <button id="valuesButton" type="button">A=1 · B=2 · C=3 · … · Z=26</button>
+      </section>
     </main>
 
     <dialog id="statsDialog" class="modal">
@@ -61,11 +92,21 @@
           <button class="icon-button small" value="close" aria-label="Close stats">×</button>
         </div>
         <div class="stat-grid">
-          <div><strong id="playedStat">0</strong><span>Played</span></div>
-          <div><strong id="winStat">0%</strong><span>Win rate</span></div>
+          <div><strong id="playedStat">0</strong><span>Days</span></div>
+          <div><strong id="totalStat">0</strong><span>Total</span></div>
           <div><strong id="streakStat">0</strong><span>Streak</span></div>
-          <div><strong id="bestStat">0</strong><span>Best</span></div>
+          <div><strong id="bestStat">0</strong><span>Best Day</span></div>
         </div>
+      </form>
+    </dialog>
+
+    <dialog id="valuesDialog" class="modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <h2>Values</h2>
+          <button class="icon-button small" value="close" aria-label="Close values">×</button>
+        </div>
+        <div id="valueGrid" class="value-grid"></div>
       </form>
     </dialog>
 
