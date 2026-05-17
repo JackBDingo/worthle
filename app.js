@@ -14,6 +14,7 @@ const SEED_WORDS = [
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 const START_DATE = Date.UTC(2026, 0, 1);
 const MS_PER_DAY = 86400000;
+const DAILY_GOAL_WORDS = 25;
 
 const form = document.querySelector("#wordForm");
 const input = document.querySelector("#wordInput");
@@ -21,6 +22,11 @@ const message = document.querySelector("#message");
 const targetValue = document.querySelector("#targetValue");
 const foundCount = document.querySelector("#foundCount");
 const scoreValue = document.querySelector("#scoreValue");
+const goalCurrent = document.querySelector("#goalCurrent");
+const goalTarget = document.querySelector("#goalTarget");
+const goalProgressFill = document.querySelector("#goalProgressFill");
+const goalWords = document.querySelector("#goalWords");
+const goalStatus = document.querySelector("#goalStatus");
 const puzzleNumber = document.querySelector("#puzzleNumber");
 const currentWord = document.querySelector("#currentWord");
 const currentValue = document.querySelector("#currentValue");
@@ -59,6 +65,10 @@ function cents(value) {
 
 function money(value) {
   return "$" + (value / 100).toFixed(2);
+}
+
+function currentScore() {
+  return state.found.length * puzzle.target;
 }
 
 function normalizeWord(value) {
@@ -109,7 +119,8 @@ function getPuzzle() {
   return {
     id: dayIndex + 1,
     dateKey: localMidnight.toISOString().slice(0, 10),
-    target: wordValue(seed)
+    target: wordValue(seed),
+    goal: wordValue(seed) * DAILY_GOAL_WORDS
   };
 }
 
@@ -188,6 +199,17 @@ function renderStats() {
   document.querySelector("#moneyStat").textContent = money(stats.money);
   document.querySelector("#streakStat").textContent = stats.streak;
   document.querySelector("#bestStat").textContent = stats.best;
+}
+
+function renderGoal() {
+  const score = currentScore();
+  const progress = Math.min(100, Math.round((score / puzzle.goal) * 100));
+
+  goalCurrent.textContent = money(score);
+  goalTarget.textContent = money(puzzle.goal);
+  goalProgressFill.style.width = progress + "%";
+  goalWords.textContent = state.found.length + " / " + DAILY_GOAL_WORDS + " goal words";
+  goalStatus.textContent = score >= puzzle.goal ? "Daily goal reached" : progress + "% to daily goal";
 }
 
 function describeValue(value) {
@@ -283,9 +305,10 @@ function makeKey(label, value, className) {
 function render() {
   targetValue.textContent = cents(puzzle.target);
   foundCount.textContent = state.found.length;
-  scoreValue.textContent = money(state.found.length * puzzle.target);
+  scoreValue.textContent = money(currentScore());
   puzzleNumber.textContent = "#" + String(puzzle.id).padStart(3, "0");
   attemptCount.textContent = state.attempts + (state.attempts === 1 ? " try" : " tries");
+  renderGoal();
   renderMeter();
   renderFoundWords();
   renderStats();
@@ -322,10 +345,16 @@ function submitWord(event) {
     const diff = value - puzzle.target;
     setMessage(cents(value) + " is " + Math.abs(diff) + (diff < 0 ? " low." : " high."));
   } else {
+    const wasGoalMet = currentScore() >= puzzle.goal;
     state.found.push(word);
     recordFirstFind();
     recordFoundWord();
-    setMessage("Banked " + word.toUpperCase() + ". Keep going.");
+    const isGoalMet = currentScore() >= puzzle.goal;
+    setMessage(
+      !wasGoalMet && isGoalMet
+        ? "Daily goal hit. Keep banking for bragging rights."
+        : "Banked " + word.toUpperCase() + ". Keep going."
+    );
     input.value = "";
   }
 
@@ -340,7 +369,7 @@ function shareText() {
     "Worthle #" + puzzle.id,
     "Target " + cents(puzzle.target),
     found + " word" + (found === 1 ? "" : "s") + " banked in " + tries + (tries === 1 ? " try" : " tries"),
-    "Score " + money(found * puzzle.target)
+    "Score " + money(found * puzzle.target) + " / " + money(puzzle.goal)
   ].join("\n");
 }
 

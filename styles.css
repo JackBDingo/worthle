@@ -122,6 +122,7 @@ h2 {
 }
 
 .target-band,
+.goal-panel,
 .entry-panel,
 .word-list-panel,
 .keyboard-panel {
@@ -129,6 +130,45 @@ h2 {
   border-radius: 8px;
   background: rgba(255, 253, 248, 0.84);
   box-shadow: var(--shadow);
+}
+
+.goal-panel {
+  padding: 12px 14px;
+}
+
+.goal-heading,
+.goal-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.goal-heading strong {
+  font-size: 1.25rem;
+}
+
+.goal-track {
+  height: 10px;
+  margin: 10px 0 8px;
+  border-radius: 999px;
+  background: #eadfc9;
+  overflow: hidden;
+}
+
+.goal-track span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  transition: width 180ms ease;
+}
+
+.goal-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
 }
 
 .target-band {

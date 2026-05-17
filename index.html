@@ -49,6 +49,20 @@
         </div>
       </section>
 
+      <section class="goal-panel" aria-label="Daily bank goal">
+        <div class="goal-heading">
+          <span class="label">Daily Bank</span>
+          <strong><span id="goalCurrent">$0.00</span> / <span id="goalTarget">$0.00</span></strong>
+        </div>
+        <div class="goal-track" aria-hidden="true">
+          <span id="goalProgressFill"></span>
+        </div>
+        <div class="goal-meta">
+          <span id="goalWords">0 / 25 goal words</span>
+          <span id="goalStatus">0% to daily goal</span>
+        </div>
+      </section>
+
       <section class="entry-panel" aria-label="Submit a word">
         <form id="wordForm" autocomplete="off">
           <label for="wordInput">Find words worth today’s target</label>
@@ -131,6 +145,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=f1394ea" type="module"></script>
+    <script src="./app.js?v=goal-58a4201" type="module"></script>
   </body>
 </html>
