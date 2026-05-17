@@ -340,8 +340,7 @@ function shareText() {
     "Worthle #" + puzzle.id,
     "Target " + cents(puzzle.target),
     found + " word" + (found === 1 ? "" : "s") + " banked in " + tries + (tries === 1 ? " try" : " tries"),
-    "Score " + money(found * puzzle.target),
-    state.found.length ? state.found.map((word) => word.toUpperCase()).sort().join(", ") : "No words banked yet"
+    "Score " + money(found * puzzle.target)
   ].join("\n");
 }
 
