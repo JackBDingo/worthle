@@ -229,6 +229,20 @@ input:focus {
   background: transparent;
 }
 
+.text-button.primary {
+  border-color: #155f3a;
+  background: var(--green);
+  color: #fffef9;
+  box-shadow: 0 3px 0 #155f3a;
+}
+
+.text-button.danger {
+  border-color: rgba(166, 67, 51, 0.32);
+  background: transparent;
+  color: var(--red);
+  box-shadow: none;
+}
+
 .meter {
   margin-top: 12px;
   padding: 10px 12px;
@@ -337,6 +351,18 @@ input:focus {
   display: flex;
   flex: 0 0 auto;
   gap: 8px;
+}
+
+.danger-zone {
+  padding: 4px 0 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.danger-zone .text-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.82rem;
 }
 
 .word-list-panel {

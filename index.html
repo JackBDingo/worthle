@@ -66,7 +66,7 @@
               tabindex="-1"
               placeholder="Type a dictionary word"
             />
-            <button class="text-button" type="submit">Bank</button>
+            <button class="text-button primary" type="submit">Bank</button>
           </div>
         </form>
         <div class="meter" aria-label="Current word value">
@@ -83,7 +83,6 @@
       <section class="status-row" aria-live="polite">
         <p id="message">Dictionary words only. Exact-value words count.</p>
         <div class="status-actions">
-          <button id="resetButton" class="text-button ghost" type="button">Reset</button>
           <button id="shareButton" class="text-button ghost" type="button">Share</button>
         </div>
       </section>
@@ -100,6 +99,10 @@
       <section class="value-strip" aria-label="Letter values">
         <button id="valuesButton" type="button">A=1 · B=2 · C=3 · … · Z=26</button>
       </section>
+
+      <footer class="danger-zone">
+        <button id="resetButton" class="text-button danger" type="button">Reset</button>
+      </footer>
     </main>
 
     <dialog id="statsDialog" class="modal">
