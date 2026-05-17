@@ -57,10 +57,13 @@
               id="wordInput"
               name="word"
               type="text"
-              inputmode="text"
+              inputmode="none"
               autocapitalize="none"
               spellcheck="false"
               minlength="2"
+              readonly
+              aria-readonly="true"
+              tabindex="-1"
               placeholder="Type a dictionary word"
             />
             <button class="text-button" type="submit">Bank</button>
@@ -125,6 +128,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js" type="module"></script>
+    <script src="./app.js?v=20260517-1055" type="module"></script>
   </body>
 </html>

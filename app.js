@@ -42,6 +42,7 @@ let puzzle;
 let state;
 let dictionary = new Set();
 let dictionaryReady = false;
+let dictionaryFailed = false;
 let resetFromUrl = false;
 
 function letterValue(letter) {
@@ -82,16 +83,21 @@ function consumeResetParam() {
 }
 
 async function loadDictionary() {
+  dictionaryReady = false;
+  dictionaryFailed = false;
+
   try {
-    const response = await fetch("./assets/dictionary.txt", { cache: "force-cache" });
+    const response = await fetch("./assets/dictionary.txt", { cache: "no-store" });
     if (!response.ok) throw new Error("Dictionary unavailable");
     const text = await response.text();
-    dictionary = new Set(text.split(/\r?\n/).filter(Boolean));
+    const words = text.split(/\r?\n/).filter(Boolean);
+    if (words.length < 1000) throw new Error("Dictionary too small");
+    dictionary = new Set(words);
     dictionaryReady = true;
   } catch {
-    dictionary = new Set(SEED_WORDS);
-    dictionaryReady = true;
-    setMessage("Dictionary could not load. Using the starter word bank.");
+    dictionary = new Set();
+    dictionaryFailed = true;
+    setMessage("Dictionary could not load. Refresh with ?reset=1.");
   }
 }
 
@@ -291,6 +297,11 @@ function setMessage(text) {
 
 function submitWord(event) {
   event.preventDefault();
+  if (dictionaryFailed) {
+    setMessage("Dictionary did not load. Refresh with ?reset=1.");
+    return;
+  }
+
   if (!dictionaryReady) {
     setMessage("Dictionary is still loading.");
     return;
@@ -358,6 +369,9 @@ function resetToday() {
 
 function bindEvents() {
   form.addEventListener("submit", submitWord);
+  input.addEventListener("beforeinput", (event) => event.preventDefault());
+  input.addEventListener("keydown", (event) => event.preventDefault());
+  input.addEventListener("focus", () => input.blur());
   input.addEventListener("input", () => {
     const normalized = normalizeWord(input.value);
     if (input.value !== normalized) input.value = normalized;
@@ -401,7 +415,6 @@ async function init() {
   await loadDictionary();
   render();
   if (resetFromUrl) setMessage("Worthle reset from URL. Fresh board loaded.");
-  input.focus();
 }
 
 init();

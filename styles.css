@@ -209,6 +209,8 @@ input {
   font-weight: 900;
   text-transform: uppercase;
   outline: none;
+  caret-color: transparent;
+  user-select: none;
 }
 
 input:focus {
