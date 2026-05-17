@@ -42,6 +42,7 @@ let puzzle;
 let state;
 let dictionary = new Set();
 let dictionaryReady = false;
+let resetFromUrl = false;
 
 function letterValue(letter) {
   return letter.toLowerCase().charCodeAt(0) - 96;
@@ -61,6 +62,23 @@ function money(value) {
 
 function normalizeWord(value) {
   return value.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function clearWorthleStorage() {
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith("worthle-hunt-"))
+    .forEach((key) => localStorage.removeItem(key));
+}
+
+function consumeResetParam() {
+  const url = new URL(window.location.href);
+  const resetValue = url.searchParams.get("reset");
+  if (!resetValue || resetValue === "0" || resetValue === "false") return false;
+
+  clearWorthleStorage();
+  url.searchParams.delete("reset");
+  window.history.replaceState({}, "", url);
+  return true;
 }
 
 async function loadDictionary() {
@@ -333,9 +351,7 @@ async function shareResult() {
 function resetToday() {
   state = emptyState();
   input.value = "";
-  Object.keys(localStorage)
-    .filter((key) => key.startsWith("worthle-hunt-"))
-    .forEach((key) => localStorage.removeItem(key));
+  clearWorthleStorage();
   setMessage("Worthle reset. Fresh board loaded.");
   render();
 }
@@ -374,14 +390,17 @@ function handleKeyboardClick(event) {
 }
 
 async function init() {
+  resetFromUrl = consumeResetParam();
   puzzle = getPuzzle();
   state = loadState();
   renderKeyboard();
   renderValueGrid();
   bindEvents();
   render();
+  if (resetFromUrl) setMessage("Worthle reset from URL. Fresh board loaded.");
   await loadDictionary();
   render();
+  if (resetFromUrl) setMessage("Worthle reset from URL. Fresh board loaded.");
   input.focus();
 }
 
