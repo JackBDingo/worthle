@@ -135,7 +135,7 @@ h2 {
   min-height: 92px;
   padding: 14px;
   display: grid;
-  grid-template-columns: auto 1fr 0.7fr 0.78fr;
+  grid-template-columns: auto 1fr 0.66fr 0.88fr 0.78fr;
   align-items: center;
   gap: 12px;
 }
@@ -331,6 +331,12 @@ input:focus {
   font-weight: 800;
 }
 
+.status-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .word-list-panel {
   min-height: 280px;
   padding: 14px;
@@ -414,7 +420,7 @@ input:focus {
 .stat-grid {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 }
 
@@ -460,7 +466,7 @@ input:focus {
   }
 
   .target-band {
-    grid-template-columns: auto 1fr 0.6fr;
+    grid-template-columns: auto 1fr 0.72fr 0.88fr;
   }
 
   .target-band > div:last-child {
@@ -482,5 +488,18 @@ input:focus {
   .stat-grid,
   .value-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .status-row {
+    align-items: flex-start;
+  }
+
+  .status-actions {
+    flex-direction: column;
+  }
+
+  .status-actions .text-button {
+    min-height: 36px;
+    padding: 0 12px;
   }
 }

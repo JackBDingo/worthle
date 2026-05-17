@@ -20,6 +20,7 @@ const input = document.querySelector("#wordInput");
 const message = document.querySelector("#message");
 const targetValue = document.querySelector("#targetValue");
 const foundCount = document.querySelector("#foundCount");
+const scoreValue = document.querySelector("#scoreValue");
 const puzzleNumber = document.querySelector("#puzzleNumber");
 const currentWord = document.querySelector("#currentWord");
 const currentValue = document.querySelector("#currentValue");
@@ -29,6 +30,7 @@ const foundWords = document.querySelector("#foundWords");
 const emptyStateEl = document.querySelector("#emptyState");
 const attemptCount = document.querySelector("#attemptCount");
 const shareButton = document.querySelector("#shareButton");
+const resetButton = document.querySelector("#resetButton");
 const statsButton = document.querySelector("#statsButton");
 const statsDialog = document.querySelector("#statsDialog");
 const valuesButton = document.querySelector("#valuesButton");
@@ -51,6 +53,10 @@ function wordValue(word) {
 
 function cents(value) {
   return "$0." + String(value).padStart(2, "0");
+}
+
+function money(value) {
+  return "$" + (value / 100).toFixed(2);
 }
 
 function normalizeWord(value) {
@@ -112,13 +118,14 @@ function loadStats() {
     return {
       days: 0,
       total: 0,
+      money: 0,
       streak: 0,
       best: 0,
       lastScoredDate: "",
       ...JSON.parse(localStorage.getItem("worthle-hunt-stats") || "{}")
     };
   } catch {
-    return { days: 0, total: 0, streak: 0, best: 0, lastScoredDate: "" };
+    return { days: 0, total: 0, money: 0, streak: 0, best: 0, lastScoredDate: "" };
   }
 }
 
@@ -145,6 +152,7 @@ function recordFirstFind() {
 function recordFoundWord() {
   const stats = loadStats();
   stats.total += 1;
+  stats.money += puzzle.target;
   stats.best = Math.max(stats.best, state.found.length);
   saveStats(stats);
 }
@@ -153,6 +161,7 @@ function renderStats() {
   const stats = loadStats();
   document.querySelector("#playedStat").textContent = stats.days;
   document.querySelector("#totalStat").textContent = stats.total;
+  document.querySelector("#moneyStat").textContent = money(stats.money);
   document.querySelector("#streakStat").textContent = stats.streak;
   document.querySelector("#bestStat").textContent = stats.best;
 }
@@ -250,6 +259,7 @@ function makeKey(label, value, className) {
 function render() {
   targetValue.textContent = cents(puzzle.target);
   foundCount.textContent = state.found.length;
+  scoreValue.textContent = money(state.found.length * puzzle.target);
   puzzleNumber.textContent = "#" + String(puzzle.id).padStart(3, "0");
   attemptCount.textContent = state.attempts + (state.attempts === 1 ? " try" : " tries");
   renderMeter();
@@ -301,6 +311,7 @@ function shareText() {
     "Worthle #" + puzzle.id,
     "Target " + cents(puzzle.target),
     found + " word" + (found === 1 ? "" : "s") + " banked in " + tries + (tries === 1 ? " try" : " tries"),
+    "Score " + money(found * puzzle.target),
     state.found.length ? state.found.map((word) => word.toUpperCase()).sort().join(", ") : "No words banked yet"
   ].join("\n");
 }
@@ -319,6 +330,16 @@ async function shareResult() {
   }
 }
 
+function resetToday() {
+  state = emptyState();
+  input.value = "";
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith("worthle-hunt-"))
+    .forEach((key) => localStorage.removeItem(key));
+  setMessage("Worthle reset. Fresh board loaded.");
+  render();
+}
+
 function bindEvents() {
   form.addEventListener("submit", submitWord);
   input.addEventListener("input", () => {
@@ -327,6 +348,7 @@ function bindEvents() {
     renderMeter();
   });
   shareButton.addEventListener("click", shareResult);
+  resetButton.addEventListener("click", resetToday);
   statsButton.addEventListener("click", () => statsDialog.showModal());
   valuesButton.addEventListener("click", () => valuesDialog.showModal());
   keyboard.addEventListener("click", handleKeyboardClick);

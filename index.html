@@ -40,6 +40,10 @@
           <strong id="foundCount">0</strong>
         </div>
         <div>
+          <span class="label">Score</span>
+          <strong id="scoreValue">$0.00</strong>
+        </div>
+        <div>
           <span class="label">Puzzle</span>
           <strong id="puzzleNumber">#000</strong>
         </div>
@@ -75,7 +79,10 @@
 
       <section class="status-row" aria-live="polite">
         <p id="message">Dictionary words only. Exact-value words count.</p>
-        <button id="shareButton" class="text-button ghost" type="button">Share</button>
+        <div class="status-actions">
+          <button id="resetButton" class="text-button ghost" type="button">Reset</button>
+          <button id="shareButton" class="text-button ghost" type="button">Share</button>
+        </div>
       </section>
 
       <section class="word-list-panel" aria-label="Found words">
@@ -100,7 +107,8 @@
         </div>
         <div class="stat-grid">
           <div><strong id="playedStat">0</strong><span>Days</span></div>
-          <div><strong id="totalStat">0</strong><span>Total</span></div>
+          <div><strong id="totalStat">0</strong><span>Words</span></div>
+          <div><strong id="moneyStat">$0.00</strong><span>Money</span></div>
           <div><strong id="streakStat">0</strong><span>Streak</span></div>
           <div><strong id="bestStat">0</strong><span>Best Day</span></div>
         </div>
