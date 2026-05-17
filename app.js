@@ -34,9 +34,12 @@ const statsDialog = document.querySelector("#statsDialog");
 const valuesButton = document.querySelector("#valuesButton");
 const valuesDialog = document.querySelector("#valuesDialog");
 const valueGrid = document.querySelector("#valueGrid");
+const keyboard = document.querySelector("#keyboard");
 
 let puzzle;
 let state;
+let dictionary = new Set();
+let dictionaryReady = false;
 
 function letterValue(letter) {
   return letter.toLowerCase().charCodeAt(0) - 96;
@@ -52,6 +55,20 @@ function cents(value) {
 
 function normalizeWord(value) {
   return value.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+async function loadDictionary() {
+  try {
+    const response = await fetch("./assets/dictionary.txt", { cache: "force-cache" });
+    if (!response.ok) throw new Error("Dictionary unavailable");
+    const text = await response.text();
+    dictionary = new Set(text.split(/\r?\n/).filter(Boolean));
+    dictionaryReady = true;
+  } catch {
+    dictionary = new Set(SEED_WORDS);
+    dictionaryReady = true;
+    setMessage("Dictionary could not load. Using the starter word bank.");
+  }
 }
 
 function getPuzzle() {
@@ -192,6 +209,44 @@ function renderValueGrid() {
   });
 }
 
+function renderKeyboard() {
+  const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  keyboard.innerHTML = "";
+
+  rows.forEach((row, index) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "keyboard-row";
+
+    if (index === 2) {
+      rowEl.appendChild(makeKey("Enter", "enter", "wide"));
+    }
+
+    [...row].forEach((letter) => {
+      rowEl.appendChild(makeKey(letter.toUpperCase(), letter, ""));
+    });
+
+    if (index === 2) {
+      rowEl.appendChild(makeKey("⌫", "backspace", "wide"));
+    }
+
+    keyboard.appendChild(rowEl);
+  });
+}
+
+function makeKey(label, value, className) {
+  const button = document.createElement("button");
+  const keyLabel = document.createElement("strong");
+  const keyValue = document.createElement("span");
+
+  button.type = "button";
+  button.dataset.key = value;
+  button.className = className ? "key " + className : "key";
+  keyLabel.textContent = label;
+  keyValue.textContent = value.length === 1 ? letterValue(value) : "";
+  button.append(keyLabel, keyValue);
+  return button;
+}
+
 function render() {
   targetValue.textContent = cents(puzzle.target);
   foundCount.textContent = state.found.length;
@@ -208,6 +263,11 @@ function setMessage(text) {
 
 function submitWord(event) {
   event.preventDefault();
+  if (!dictionaryReady) {
+    setMessage("Dictionary is still loading.");
+    return;
+  }
+
   const word = normalizeWord(input.value);
   const value = wordValue(word);
   state.attempts += 1;
@@ -215,6 +275,8 @@ function submitWord(event) {
 
   if (word.length < 2) {
     setMessage("Use at least two letters.");
+  } else if (!dictionary.has(word)) {
+    setMessage(word.toUpperCase() + " is not in the dictionary.");
   } else if (state.found.includes(word)) {
     setMessage(word.toUpperCase() + " is already banked.");
   } else if (value !== puzzle.target) {
@@ -267,13 +329,36 @@ function bindEvents() {
   shareButton.addEventListener("click", shareResult);
   statsButton.addEventListener("click", () => statsDialog.showModal());
   valuesButton.addEventListener("click", () => valuesDialog.showModal());
+  keyboard.addEventListener("click", handleKeyboardClick);
+  document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
 }
 
-function init() {
+function handleKeyboardClick(event) {
+  const key = event.target.closest("button")?.dataset.key;
+  if (!key) return;
+
+  if (key === "enter") {
+    form.requestSubmit();
+    return;
+  }
+
+  if (key === "backspace") {
+    input.value = input.value.slice(0, -1);
+  } else {
+    input.value += key;
+  }
+
+  renderMeter();
+}
+
+async function init() {
   puzzle = getPuzzle();
   state = loadState();
+  renderKeyboard();
   renderValueGrid();
   bindEvents();
+  render();
+  await loadDictionary();
   render();
   input.focus();
 }

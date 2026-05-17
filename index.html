@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <meta
       name="description"
       content="Worthle is a daily word-value hunt where letters add up to the target cents."
@@ -54,7 +57,7 @@
               autocapitalize="none"
               spellcheck="false"
               minlength="2"
-              placeholder="Type any word"
+              placeholder="Type a dictionary word"
             />
             <button class="text-button" type="submit">Bank</button>
           </div>
@@ -66,8 +69,12 @@
         </div>
       </section>
 
+      <section class="keyboard-panel" aria-label="On-board keyboard">
+        <div id="keyboard" class="keyboard"></div>
+      </section>
+
       <section class="status-row" aria-live="polite">
-        <p id="message">No length limit. Exact-value words count.</p>
+        <p id="message">Dictionary words only. Exact-value words count.</p>
         <button id="shareButton" class="text-button ghost" type="button">Share</button>
       </section>
 
