@@ -26,12 +26,6 @@ const MODES = {
     description: "Daily all-letter pricing."
   }
 };
-const LETTER_BANDS = {
-  vowel: { letters: "aeiou", min: 1, max: 6 },
-  common: { letters: "tnsrhlcd", min: 4, max: 14 },
-  mid: { letters: "mpfgwybvk", min: 8, max: 20 },
-  rare: { letters: "jxqz", min: 15, max: 26 }
-};
 
 const form = document.querySelector("#wordForm");
 const input = document.querySelector("#wordInput");
@@ -145,10 +139,6 @@ function seededRandom(seed) {
   };
 }
 
-function bandForLetter(letter) {
-  return Object.values(LETTER_BANDS).find((band) => band.letters.includes(letter));
-}
-
 function buildClassicValues() {
   return Object.fromEntries([...ALPHABET].map((letter, index) => [letter, index + 1]));
 }
@@ -156,12 +146,7 @@ function buildClassicValues() {
 function buildMarketValues(dateKey) {
   const random = seededRandom(hashSeed("worthle-market-" + dateKey));
   return Object.fromEntries(
-    [...ALPHABET].map((letter) => {
-      const band = bandForLetter(letter);
-      const min = band?.min || 10;
-      const max = band?.max || 35;
-      return [letter, min + Math.floor(random() * (max - min + 1))];
-    })
+    [...ALPHABET].map((letter) => [letter, 1 + Math.floor(random() * 26)])
   );
 }
 
