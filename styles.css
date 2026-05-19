@@ -175,7 +175,7 @@ h2 {
   min-height: 92px;
   padding: 14px;
   display: grid;
-  grid-template-columns: auto 1fr 0.6fr 0.82fr 0.72fr 0.78fr;
+  grid-template-columns: auto 1fr 0.66fr 0.88fr 0.78fr;
   align-items: center;
   gap: 12px;
 }
@@ -609,7 +609,7 @@ input:focus {
     grid-template-columns: auto 1fr 0.72fr 0.88fr;
   }
 
-  .target-band > div:nth-last-child(-n + 2) {
+  .target-band > div:last-child {
     display: none;
   }
 

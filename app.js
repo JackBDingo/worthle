@@ -45,7 +45,6 @@ const goalProgressFill = document.querySelector("#goalProgressFill");
 const goalWords = document.querySelector("#goalWords");
 const goalStatus = document.querySelector("#goalStatus");
 const puzzleNumber = document.querySelector("#puzzleNumber");
-const modeLabel = document.querySelector("#modeLabel");
 const currentWord = document.querySelector("#currentWord");
 const currentValue = document.querySelector("#currentValue");
 const currentDelta = document.querySelector("#currentDelta");
@@ -412,7 +411,7 @@ function render() {
   foundCount.textContent = state.found.length;
   scoreValue.textContent = money(currentScore());
   puzzleNumber.textContent = "#" + String(puzzle.id).padStart(3, "0");
-  modeLabel.textContent = MODES[settings.mode].label;
+  settingsButton.textContent = "Settings · " + MODES[settings.mode].label;
   attemptCount.textContent = state.attempts + (state.attempts === 1 ? " try" : " tries");
   shareButton.hidden = !isGoalReached();
   valuesButton.textContent =
