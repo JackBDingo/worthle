@@ -17,6 +17,7 @@ const MS_PER_DAY = 86400000;
 const DAILY_GOAL_WORDS = 10;
 const CATEGORY_GOAL_WORDS = 5;
 const MAX_DEFINITION_HINTS = 5;
+const EMOJI_MAX_GUESSES = 6;
 const SETTINGS_KEY = "worthle-settings";
 const MODES = {
   classic: {
@@ -34,6 +35,10 @@ const MODES = {
   category: {
     label: "Category",
     description: "Bank words from a daily theme."
+  },
+  emoji: {
+    label: "Emoji",
+    description: "Guess the 5-letter word from emojis."
   }
 };
 
@@ -91,6 +96,31 @@ const CATEGORY_PUZZLES = [
   }
 ];
 
+const EMOJI_PUZZLES = [
+  { word: "beach", emoji: "🏖️🌊☀️" },
+  { word: "brain", emoji: "🧠💭⚡" },
+  { word: "bread", emoji: "🍞🌾🔥" },
+  { word: "crown", emoji: "👑🤴✨" },
+  { word: "dance", emoji: "💃🕺🎵" },
+  { word: "dream", emoji: "😴💭🌙" },
+  { word: "flame", emoji: "🔥🪵✨" },
+  { word: "ghost", emoji: "👻🌫️🏚️" },
+  { word: "heart", emoji: "❤️💓🫀" },
+  { word: "horse", emoji: "🐴🏇🌾" },
+  { word: "lemon", emoji: "🍋🟡😖" },
+  { word: "magic", emoji: "🪄✨🎩" },
+  { word: "music", emoji: "🎵🎧🎹" },
+  { word: "ocean", emoji: "🌊🐚🐟" },
+  { word: "plant", emoji: "🌱🪴☀️" },
+  { word: "robot", emoji: "🤖⚙️🔋" },
+  { word: "sheep", emoji: "🐑🧶🌾" },
+  { word: "snake", emoji: "🐍🌿⚠️" },
+  { word: "spoon", emoji: "🥄🍲🍽️" },
+  { word: "storm", emoji: "⛈️🌧️⚡" },
+  { word: "tiger", emoji: "🐅🌿👁️" },
+  { word: "watch", emoji: "⌚⏱️👀" }
+];
+
 const form = document.querySelector("#wordForm");
 const input = document.querySelector("#wordInput");
 const message = document.querySelector("#message");
@@ -99,6 +129,7 @@ const foundCount = document.querySelector("#foundCount");
 const scoreValue = document.querySelector("#scoreValue");
 const goalCurrent = document.querySelector("#goalCurrent");
 const goalTarget = document.querySelector("#goalTarget");
+const goalHeadingLabel = document.querySelector(".goal-heading .label");
 const goalProgressFill = document.querySelector("#goalProgressFill");
 const goalWords = document.querySelector("#goalWords");
 const goalStatus = document.querySelector("#goalStatus");
@@ -115,8 +146,10 @@ const currentValue = document.querySelector("#currentValue");
 const currentDelta = document.querySelector("#currentDelta");
 const meter = document.querySelector(".meter");
 const foundWords = document.querySelector("#foundWords");
+const foundWordsTitle = document.querySelector(".panel-heading h2");
 const emptyStateEl = document.querySelector("#emptyState");
 const attemptCount = document.querySelector("#attemptCount");
+const submitButton = document.querySelector("#wordForm .text-button.primary");
 const shareButton = document.querySelector("#shareButton");
 const resetButton = document.querySelector("#resetButton");
 const settingsButton = document.querySelector("#settingsButton");
@@ -162,9 +195,14 @@ function currentScore() {
 }
 
 function isGoalReached() {
+  if (settings.mode === "emoji") return state.found.includes(puzzle.answer);
   if (settings.mode === "category") return state.found.length >= CATEGORY_GOAL_WORDS;
   if (settings.mode === "definition") return state.found.includes(puzzle.answer);
   return currentScore() >= puzzle.goal;
+}
+
+function isGameOver() {
+  return settings.mode === "emoji" && !isGoalReached() && state.attempts >= EMOJI_MAX_GUESSES;
 }
 
 function normalizeWord(value) {
@@ -299,6 +337,21 @@ function getPuzzle() {
     };
   }
 
+  if (settings.mode === "emoji") {
+    const entry = EMOJI_PUZZLES[modeIndex(dayIndex, "emoji", EMOJI_PUZZLES.length)];
+    return {
+      id: dayIndex + 1,
+      dateKey,
+      target: null,
+      goal: 1,
+      answer: entry.word,
+      emoji: entry.emoji,
+      promptLabel: "Emoji",
+      prompt: entry.emoji,
+      goalWords: 1
+    };
+  }
+
   return {
     id: dayIndex + 1,
     dateKey,
@@ -314,6 +367,7 @@ function emptyState() {
     attempts: 0,
     lastValue: 0,
     hintsUsed: 0,
+    guesses: [],
     completedAt: "",
     congratsSeen: false
   };
@@ -380,7 +434,7 @@ function recordFirstFind() {
 function recordFoundWord() {
   const stats = loadStats();
   stats.total += 1;
-  stats.money += state.lastValue;
+  if (settings.mode !== "emoji") stats.money += state.lastValue;
   stats.best = Math.max(stats.best, state.found.length);
   saveStats(stats);
 }
@@ -398,18 +452,35 @@ function renderGoal() {
   const score = currentScore();
   const targetCount = puzzle.goalWords || DAILY_GOAL_WORDS;
   const progress =
+    settings.mode === "emoji"
+      ? Math.min(100, Math.round((state.attempts / EMOJI_MAX_GUESSES) * 100))
+      : settings.mode === "category"
+        ? Math.min(100, Math.round((state.found.length / targetCount) * 100))
+        : Math.min(100, Math.round((score / puzzle.goal) * 100));
+
+  if (settings.mode === "emoji") {
+    goalCurrent.textContent = state.attempts + " guesses";
+    goalTarget.textContent = EMOJI_MAX_GUESSES + " max";
+    goalProgressFill.style.width = progress + "%";
+    goalWords.textContent = isGoalReached() ? "Solved" : state.attempts + " / " + EMOJI_MAX_GUESSES + " guesses";
+    goalStatus.textContent = isGoalReached() ? "Emoji solved" : isGameOver() ? "Out of guesses" : (EMOJI_MAX_GUESSES - state.attempts) + " guesses left";
+    return;
+  }
+
+  const bankProgress =
     settings.mode === "category"
       ? Math.min(100, Math.round((state.found.length / targetCount) * 100))
       : Math.min(100, Math.round((score / puzzle.goal) * 100));
 
   goalCurrent.textContent = money(score);
   goalTarget.textContent = settings.mode === "category" ? targetCount + " words" : money(puzzle.goal);
-  goalProgressFill.style.width = progress + "%";
+  goalProgressFill.style.width = bankProgress + "%";
   goalWords.textContent = state.found.length + " / " + targetCount + " goal words";
-  goalStatus.textContent = isGoalReached() ? "Daily goal reached" : progress + "% to daily goal";
+  goalStatus.textContent = isGoalReached() ? "Daily goal reached" : bankProgress + "% to daily goal";
 }
 
 function describeValue(value) {
+  if (settings.mode === "emoji") return value === 0 ? "Start guessing" : state.attempts + " / " + EMOJI_MAX_GUESSES + " guesses";
   if (settings.mode === "category") return value === 0 ? "Start typing" : "Category guess";
   const diff = value - puzzle.target;
   if (value === 0) return "Start typing";
@@ -423,10 +494,14 @@ function renderMeter() {
   const diff = value - puzzle.target;
 
   currentWord.textContent = word || "-";
-  currentValue.textContent = cents(value);
+  currentValue.textContent = settings.mode === "emoji" ? word.length + " / 5" : cents(value);
   currentDelta.textContent = describeValue(value);
 
   meter.classList.remove("hit", "low", "high");
+  if (settings.mode === "emoji") {
+    if (word.length === 5) meter.classList.add("hit");
+    return;
+  }
   if (value > 0 && diff === 0) meter.classList.add("hit");
   if (value > 0 && diff < 0) meter.classList.add("low");
   if (value > 0 && diff > 0) meter.classList.add("high");
@@ -434,19 +509,19 @@ function renderMeter() {
 
 function renderFoundWords() {
   foundWords.innerHTML = "";
-  const sorted = [...state.found].sort((a, b) => a.localeCompare(b));
+  const words = settings.mode === "emoji" ? state.guesses : [...state.found].sort((a, b) => a.localeCompare(b));
 
-  sorted.forEach((word) => {
+  words.forEach((word) => {
     const item = document.createElement("li");
     const text = document.createElement("strong");
     const value = document.createElement("span");
     text.textContent = word;
-    value.textContent = cents(wordValue(word));
+    value.textContent = settings.mode === "emoji" ? (word === puzzle.answer ? "hit" : "miss") : cents(wordValue(word));
     item.append(text, value);
     foundWords.appendChild(item);
   });
 
-  emptyStateEl.hidden = sorted.length > 0;
+  emptyStateEl.hidden = words.length > 0;
 }
 
 function renderValueGrid() {
@@ -550,18 +625,27 @@ function makeKey(label, value, className) {
 }
 
 function render() {
-  targetValue.textContent = puzzle.target === null ? "Any" : cents(puzzle.target);
-  foundCount.textContent = state.found.length;
-  scoreValue.textContent = money(currentScore());
+  targetValue.textContent = settings.mode === "emoji" ? "Emoji" : puzzle.target === null ? "Any" : cents(puzzle.target);
+  foundCount.textContent = settings.mode === "emoji" ? state.attempts + "/" + EMOJI_MAX_GUESSES : state.found.length;
+  scoreValue.textContent = settings.mode === "emoji" ? (isGoalReached() ? "Solved" : isGameOver() ? "Missed" : "Guess") : money(currentScore());
   puzzleNumber.textContent = "#" + String(puzzle.id).padStart(3, "0");
   settingsButton.textContent = "Settings · " + MODES[settings.mode].label;
-  attemptCount.textContent = state.attempts + (state.attempts === 1 ? " try" : " tries");
+  goalHeadingLabel.textContent = settings.mode === "emoji" ? "Emoji Guess" : "Daily Bank";
+  foundWordsTitle.textContent = settings.mode === "emoji" ? "Guesses" : "Banked Words";
+  submitButton.textContent = settings.mode === "emoji" ? "Guess" : "Bank";
+  attemptCount.textContent =
+    settings.mode === "emoji"
+      ? state.attempts + " / " + EMOJI_MAX_GUESSES + " guesses"
+      : state.attempts + (state.attempts === 1 ? " try" : " tries");
   shareButton.hidden = !isGoalReached();
   valuesButton.textContent =
-    settings.mode === "market"
+    settings.mode === "emoji"
+      ? "Emoji mode · 5 letters · 6 guesses"
+      : settings.mode === "market"
       ? "Daily market values · tap to inspect"
       : "A=1 · B=2 · C=3 · … · Z=26";
   cluePanel.hidden = !puzzle.prompt;
+  cluePanel.classList.toggle("emoji-clue", settings.mode === "emoji");
   clueLabel.textContent = puzzle.promptLabel || "Clue";
   clueText.textContent = puzzle.prompt || "";
   renderHints();
@@ -578,6 +662,16 @@ function setMessage(text) {
 }
 
 function renderWinDialog() {
+  if (settings.mode === "emoji") {
+    winScore.textContent = "Solved";
+    winMeta.textContent =
+      state.attempts +
+      " / " +
+      EMOJI_MAX_GUESSES +
+      " guesses · Emoji";
+    return;
+  }
+
   const hintMeta =
     settings.mode === "definition"
       ? " · " + state.hintsUsed + " hint" + (state.hintsUsed === 1 ? "" : "s")
@@ -613,8 +707,58 @@ function submitWord(event) {
 
   const word = normalizeWord(input.value);
   const value = wordValue(word);
-  state.attempts += 1;
   state.lastValue = value;
+
+  if (settings.mode === "emoji") {
+    if (isGoalReached()) {
+      setMessage("Already solved.");
+    } else if (isGameOver()) {
+      setMessage("Out of guesses. Today's word was " + puzzle.answer.toUpperCase() + ".");
+    } else if (word.length !== 5) {
+      setMessage("Emoji mode needs a 5-letter word.");
+    } else if (!dictionary.has(word)) {
+      setMessage(word.toUpperCase() + " is not in the dictionary.");
+    } else if (state.guesses.includes(word)) {
+      setMessage(word.toUpperCase() + " was already guessed.");
+    } else {
+      const wasGoalMet = isGoalReached();
+      state.attempts += 1;
+      state.guesses.push(word);
+
+      if (word === puzzle.answer) {
+        state.found.push(word);
+        recordFirstFind();
+        recordFoundWord();
+        state.completedAt = new Date().toISOString();
+        state.congratsSeen = false;
+        setMessage("Emoji solved.");
+      } else {
+        const remaining = EMOJI_MAX_GUESSES - state.attempts;
+        setMessage(
+          remaining > 0
+            ? "Not it. " + remaining + " guess" + (remaining === 1 ? "" : "es") + " left."
+            : "Out of guesses. Today's word was " + puzzle.answer.toUpperCase() + "."
+        );
+      }
+      input.value = "";
+
+      if (!wasGoalMet && isGoalReached()) {
+        state.completedAt = new Date().toISOString();
+        state.congratsSeen = false;
+      }
+    }
+
+    saveState();
+    render();
+    if (isGoalReached() && !state.congratsSeen) {
+      state.congratsSeen = true;
+      saveState();
+      showWinDialog();
+    }
+    return;
+  }
+
+  state.attempts += 1;
 
   if (word.length < 2) {
     setMessage("Use at least two letters.");
@@ -658,6 +802,15 @@ function submitWord(event) {
 }
 
 function shareText() {
+  if (settings.mode === "emoji") {
+    return [
+      "Worthle #" + puzzle.id,
+      "Emoji mode",
+      puzzle.emoji,
+      "Solved in " + state.attempts + " / " + EMOJI_MAX_GUESSES + " guesses"
+    ].join("\n");
+  }
+
   const found = state.found.length;
   const tries = state.attempts;
   const lines = [
