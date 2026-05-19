@@ -16,6 +16,7 @@ const START_DATE = Date.UTC(2026, 0, 1);
 const MS_PER_DAY = 86400000;
 const DAILY_GOAL_WORDS = 10;
 const CATEGORY_GOAL_WORDS = 5;
+const MAX_DEFINITION_HINTS = 5;
 const SETTINGS_KEY = "worthle-settings";
 const MODES = {
   classic: {
@@ -105,6 +106,10 @@ const puzzleNumber = document.querySelector("#puzzleNumber");
 const cluePanel = document.querySelector("#cluePanel");
 const clueLabel = document.querySelector("#clueLabel");
 const clueText = document.querySelector("#clueText");
+const hintControls = document.querySelector("#hintControls");
+const hintButton = document.querySelector("#hintButton");
+const hintCount = document.querySelector("#hintCount");
+const hintList = document.querySelector("#hintList");
 const currentWord = document.querySelector("#currentWord");
 const currentValue = document.querySelector("#currentValue");
 const currentDelta = document.querySelector("#currentDelta");
@@ -308,6 +313,7 @@ function emptyState() {
     found: [],
     attempts: 0,
     lastValue: 0,
+    hintsUsed: 0,
     completedAt: "",
     congratsSeen: false
   };
@@ -462,6 +468,49 @@ function renderSettings() {
   });
 }
 
+function hintText(level) {
+  if (settings.mode !== "definition") return "";
+  const answer = puzzle.answer || "";
+  const value = wordValue(answer);
+  const vowels = [...new Set([...answer].filter((letter) => "aeiou".includes(letter)))].join(", ");
+  const middle = answer.length > 3 ? answer.slice(1, -1).replace(/[a-z]/g, "_") : "";
+
+  switch (level) {
+    case 1:
+      return "It is " + answer.length + " letters long.";
+    case 2:
+      return "It starts with " + answer[0].toUpperCase() + ".";
+    case 3:
+      return "It ends with " + answer.at(-1).toUpperCase() + ".";
+    case 4:
+      return vowels ? "Its vowel" + (vowels.length > 1 ? "s are " : " is ") + vowels.toUpperCase() + "." : "It has no standard vowels.";
+    case 5:
+      return "Pattern: " + answer[0].toUpperCase() + middle + answer.at(-1).toUpperCase() + " · value " + cents(value) + ".";
+    default:
+      return "";
+  }
+}
+
+function renderHints() {
+  const isDefinition = settings.mode === "definition";
+  hintControls.hidden = !isDefinition;
+  hintList.hidden = !isDefinition || state.hintsUsed === 0;
+  hintList.innerHTML = "";
+
+  if (!isDefinition) return;
+
+  hintButton.disabled = state.hintsUsed >= MAX_DEFINITION_HINTS || isGoalReached();
+  hintButton.textContent = state.hintsUsed >= MAX_DEFINITION_HINTS ? "No hints left" : "Hint";
+  hintCount.textContent =
+    state.hintsUsed + " / " + MAX_DEFINITION_HINTS + " hint" + (state.hintsUsed === 1 ? "" : "s") + " used";
+
+  for (let index = 1; index <= state.hintsUsed; index += 1) {
+    const item = document.createElement("li");
+    item.textContent = hintText(index);
+    hintList.appendChild(item);
+  }
+}
+
 function renderKeyboard() {
   const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
   keyboard.innerHTML = "";
@@ -515,6 +564,7 @@ function render() {
   cluePanel.hidden = !puzzle.prompt;
   clueLabel.textContent = puzzle.promptLabel || "Clue";
   clueText.textContent = puzzle.prompt || "";
+  renderHints();
   renderGoal();
   renderMeter();
   renderFoundWords();
@@ -528,6 +578,10 @@ function setMessage(text) {
 }
 
 function renderWinDialog() {
+  const hintMeta =
+    settings.mode === "definition"
+      ? " · " + state.hintsUsed + " hint" + (state.hintsUsed === 1 ? "" : "s")
+      : "";
   winScore.textContent = money(currentScore());
   winMeta.textContent =
     state.found.length +
@@ -535,6 +589,7 @@ function renderWinDialog() {
     " in " +
     state.attempts +
     (state.attempts === 1 ? " try" : " tries") +
+    hintMeta +
     " · " +
     MODES[settings.mode].label;
 }
@@ -605,13 +660,17 @@ function submitWord(event) {
 function shareText() {
   const found = state.found.length;
   const tries = state.attempts;
-  return [
+  const lines = [
     "Worthle #" + puzzle.id,
     MODES[settings.mode].label + " mode",
     puzzle.prompt ? puzzle.prompt : "Target " + cents(puzzle.target),
     found + " word" + (found === 1 ? "" : "s") + " banked in " + tries + (tries === 1 ? " try" : " tries"),
     "Score " + money(currentScore())
-  ].join("\n");
+  ];
+  if (settings.mode === "definition") {
+    lines.push(state.hintsUsed + " hint" + (state.hintsUsed === 1 ? "" : "s") + " used");
+  }
+  return lines.join("\n");
 }
 
 async function shareResult() {
@@ -633,6 +692,23 @@ function resetToday() {
   input.value = "";
   localStorage.removeItem(stateKey());
   setMessage("Worthle reset. Fresh board loaded.");
+  render();
+}
+
+function useHint() {
+  if (settings.mode !== "definition") return;
+  if (state.hintsUsed >= MAX_DEFINITION_HINTS) {
+    setMessage("No hints left for this clue.");
+    return;
+  }
+  if (isGoalReached()) {
+    setMessage("Already solved.");
+    return;
+  }
+
+  state.hintsUsed += 1;
+  saveState();
+  setMessage("Hint " + state.hintsUsed + " revealed.");
   render();
 }
 
@@ -661,6 +737,7 @@ function bindEvents() {
   });
   shareButton.addEventListener("click", shareResult);
   winShareButton.addEventListener("click", shareResult);
+  hintButton.addEventListener("click", useHint);
   resetButton.addEventListener("click", resetToday);
   statsButton.addEventListener("click", () => statsDialog.showModal());
   settingsButton.addEventListener("click", () => settingsDialog.showModal());

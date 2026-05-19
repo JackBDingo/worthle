@@ -184,6 +184,31 @@ h2 {
   line-height: 1.35;
 }
 
+.hint-controls {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hint-controls span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.hint-list {
+  margin: 10px 0 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.hint-list li + li {
+  margin-top: 4px;
+}
+
 .target-band {
   min-height: 92px;
   padding: 14px;
