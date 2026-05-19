@@ -27,10 +27,10 @@ const MODES = {
   }
 };
 const LETTER_BANDS = {
-  vowel: { letters: "aeiou", min: 1, max: 8 },
-  common: { letters: "tnsrhlcd", min: 4, max: 15 },
-  mid: { letters: "mpfgwybvk", min: 10, max: 35 },
-  rare: { letters: "jxqz", min: 35, max: 125 }
+  vowel: { letters: "aeiou", min: 1, max: 6 },
+  common: { letters: "tnsrhlcd", min: 4, max: 14 },
+  mid: { letters: "mpfgwybvk", min: 8, max: 20 },
+  rare: { letters: "jxqz", min: 15, max: 26 }
 };
 
 const form = document.querySelector("#wordForm");
