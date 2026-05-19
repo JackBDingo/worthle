@@ -14,7 +14,24 @@ const SEED_WORDS = [
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 const START_DATE = Date.UTC(2026, 0, 1);
 const MS_PER_DAY = 86400000;
-const DAILY_GOAL_WORDS = 25;
+const DAILY_GOAL_WORDS = 10;
+const SETTINGS_KEY = "worthle-settings";
+const MODES = {
+  classic: {
+    label: "Classic",
+    description: "Fixed A=1 through Z=26 pricing."
+  },
+  market: {
+    label: "Market",
+    description: "Daily all-letter pricing."
+  }
+};
+const LETTER_BANDS = {
+  vowel: { letters: "aeiou", min: 1, max: 8 },
+  common: { letters: "tnsrhlcd", min: 4, max: 15 },
+  mid: { letters: "mpfgwybvk", min: 10, max: 35 },
+  rare: { letters: "jxqz", min: 35, max: 125 }
+};
 
 const form = document.querySelector("#wordForm");
 const input = document.querySelector("#wordInput");
@@ -28,6 +45,7 @@ const goalProgressFill = document.querySelector("#goalProgressFill");
 const goalWords = document.querySelector("#goalWords");
 const goalStatus = document.querySelector("#goalStatus");
 const puzzleNumber = document.querySelector("#puzzleNumber");
+const modeLabel = document.querySelector("#modeLabel");
 const currentWord = document.querySelector("#currentWord");
 const currentValue = document.querySelector("#currentValue");
 const currentDelta = document.querySelector("#currentDelta");
@@ -37,22 +55,30 @@ const emptyStateEl = document.querySelector("#emptyState");
 const attemptCount = document.querySelector("#attemptCount");
 const shareButton = document.querySelector("#shareButton");
 const resetButton = document.querySelector("#resetButton");
+const settingsButton = document.querySelector("#settingsButton");
 const statsButton = document.querySelector("#statsButton");
 const statsDialog = document.querySelector("#statsDialog");
+const settingsDialog = document.querySelector("#settingsDialog");
 const valuesButton = document.querySelector("#valuesButton");
 const valuesDialog = document.querySelector("#valuesDialog");
 const valueGrid = document.querySelector("#valueGrid");
 const keyboard = document.querySelector("#keyboard");
+const winDialog = document.querySelector("#winDialog");
+const winScore = document.querySelector("#winScore");
+const winMeta = document.querySelector("#winMeta");
+const winShareButton = document.querySelector("#winShareButton");
 
 let puzzle;
 let state;
+let settings;
+let letterValues = {};
 let dictionary = new Set();
 let dictionaryReady = false;
 let dictionaryFailed = false;
 let resetFromUrl = false;
 
 function letterValue(letter) {
-  return letter.toLowerCase().charCodeAt(0) - 96;
+  return letterValues[letter.toLowerCase()] || 0;
 }
 
 function wordValue(word) {
@@ -60,7 +86,7 @@ function wordValue(word) {
 }
 
 function cents(value) {
-  return "$0." + String(value).padStart(2, "0");
+  return "$" + (value / 100).toFixed(2);
 }
 
 function money(value) {
@@ -71,6 +97,10 @@ function currentScore() {
   return state.found.length * puzzle.target;
 }
 
+function isGoalReached() {
+  return currentScore() >= puzzle.goal;
+}
+
 function normalizeWord(value) {
   return value.toLowerCase().replace(/[^a-z]/g, "");
 }
@@ -79,6 +109,65 @@ function clearWorthleStorage() {
   Object.keys(localStorage)
     .filter((key) => key.startsWith("worthle-hunt-"))
     .forEach((key) => localStorage.removeItem(key));
+}
+
+function loadSettings() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    return {
+      mode: MODES[parsed.mode] ? parsed.mode : "classic"
+    };
+  } catch {
+    return { mode: "classic" };
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function hashSeed(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededRandom(seed) {
+  let value = seed >>> 0;
+  return function random() {
+    value += 0x6d2b79f5;
+    let next = value;
+    next = Math.imul(next ^ (next >>> 15), next | 1);
+    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
+    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function bandForLetter(letter) {
+  return Object.values(LETTER_BANDS).find((band) => band.letters.includes(letter));
+}
+
+function buildClassicValues() {
+  return Object.fromEntries([...ALPHABET].map((letter, index) => [letter, index + 1]));
+}
+
+function buildMarketValues(dateKey) {
+  const random = seededRandom(hashSeed("worthle-market-" + dateKey));
+  return Object.fromEntries(
+    [...ALPHABET].map((letter) => {
+      const band = bandForLetter(letter);
+      const min = band?.min || 10;
+      const max = band?.max || 35;
+      return [letter, min + Math.floor(random() * (max - min + 1))];
+    })
+  );
+}
+
+function buildLetterValues(dateKey) {
+  letterValues = settings.mode === "market" ? buildMarketValues(dateKey) : buildClassicValues();
 }
 
 function consumeResetParam() {
@@ -116,9 +205,11 @@ function getPuzzle() {
   const localMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const dayIndex = Math.floor((localMidnight.getTime() - START_DATE) / MS_PER_DAY);
   const seed = SEED_WORDS[((dayIndex % SEED_WORDS.length) + SEED_WORDS.length) % SEED_WORDS.length];
+  const dateKey = localMidnight.toISOString().slice(0, 10);
+  buildLetterValues(dateKey);
   return {
     id: dayIndex + 1,
-    dateKey: localMidnight.toISOString().slice(0, 10),
+    dateKey,
     target: wordValue(seed),
     goal: wordValue(seed) * DAILY_GOAL_WORDS
   };
@@ -128,12 +219,20 @@ function emptyState() {
   return {
     found: [],
     attempts: 0,
-    lastValue: 0
+    lastValue: 0,
+    completedAt: "",
+    congratsSeen: false
   };
 }
 
+function stateKey() {
+  return "worthle-hunt-" + puzzle.dateKey + "-" + settings.mode;
+}
+
 function loadState() {
-  const raw = localStorage.getItem("worthle-hunt-" + puzzle.dateKey);
+  const raw =
+    localStorage.getItem(stateKey()) ||
+    (settings.mode === "classic" ? localStorage.getItem("worthle-hunt-" + puzzle.dateKey) : null);
   if (!raw) return emptyState();
 
   try {
@@ -145,7 +244,7 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem("worthle-hunt-" + puzzle.dateKey, JSON.stringify(state));
+  localStorage.setItem(stateKey(), JSON.stringify(state));
 }
 
 function loadStats() {
@@ -258,9 +357,15 @@ function renderValueGrid() {
     const strong = document.createElement("strong");
     const span = document.createElement("span");
     strong.textContent = letter.toUpperCase();
-    span.textContent = letterValue(letter);
+    span.textContent = cents(letterValue(letter));
     cell.append(strong, span);
     valueGrid.appendChild(cell);
+  });
+}
+
+function renderSettings() {
+  document.querySelectorAll("input[name='mode']").forEach((radio) => {
+    radio.checked = radio.value === settings.mode;
   });
 }
 
@@ -307,15 +412,40 @@ function render() {
   foundCount.textContent = state.found.length;
   scoreValue.textContent = money(currentScore());
   puzzleNumber.textContent = "#" + String(puzzle.id).padStart(3, "0");
+  modeLabel.textContent = MODES[settings.mode].label;
   attemptCount.textContent = state.attempts + (state.attempts === 1 ? " try" : " tries");
+  shareButton.hidden = !isGoalReached();
+  valuesButton.textContent =
+    settings.mode === "market"
+      ? "Daily market values · tap to inspect"
+      : "A=1 · B=2 · C=3 · … · Z=26";
   renderGoal();
   renderMeter();
   renderFoundWords();
+  renderSettings();
   renderStats();
+  renderWinDialog();
 }
 
 function setMessage(text) {
   message.textContent = text;
+}
+
+function renderWinDialog() {
+  winScore.textContent = money(currentScore());
+  winMeta.textContent =
+    state.found.length +
+    (state.found.length === 1 ? " word" : " words") +
+    " in " +
+    state.attempts +
+    (state.attempts === 1 ? " try" : " tries") +
+    " · " +
+    MODES[settings.mode].label;
+}
+
+function showWinDialog() {
+  renderWinDialog();
+  if (!winDialog.open) winDialog.showModal();
 }
 
 function submitWord(event) {
@@ -350,9 +480,13 @@ function submitWord(event) {
     recordFirstFind();
     recordFoundWord();
     const isGoalMet = currentScore() >= puzzle.goal;
+    if (!wasGoalMet && isGoalMet) {
+      state.completedAt = new Date().toISOString();
+      state.congratsSeen = false;
+    }
     setMessage(
       !wasGoalMet && isGoalMet
-        ? "Daily goal hit. Keep banking for bragging rights."
+        ? "Daily goal hit."
         : "Banked " + word.toUpperCase() + ". Keep going."
     );
     input.value = "";
@@ -360,6 +494,11 @@ function submitWord(event) {
 
   saveState();
   render();
+  if (isGoalReached() && !state.congratsSeen) {
+    state.congratsSeen = true;
+    saveState();
+    showWinDialog();
+  }
 }
 
 function shareText() {
@@ -367,6 +506,7 @@ function shareText() {
   const tries = state.attempts;
   return [
     "Worthle #" + puzzle.id,
+    MODES[settings.mode].label + " mode",
     "Target " + cents(puzzle.target),
     found + " word" + (found === 1 ? "" : "s") + " banked in " + tries + (tries === 1 ? " try" : " tries"),
     "Score " + money(found * puzzle.target) + " / " + money(puzzle.goal)
@@ -390,8 +530,21 @@ async function shareResult() {
 function resetToday() {
   state = emptyState();
   input.value = "";
-  clearWorthleStorage();
+  localStorage.removeItem(stateKey());
   setMessage("Worthle reset. Fresh board loaded.");
+  render();
+}
+
+function switchMode(mode) {
+  if (!MODES[mode] || settings.mode === mode) return;
+  settings.mode = mode;
+  saveSettings();
+  puzzle = getPuzzle();
+  state = loadState();
+  input.value = "";
+  renderKeyboard();
+  renderValueGrid();
+  setMessage(MODES[mode].label + " mode loaded.");
   render();
 }
 
@@ -406,9 +559,14 @@ function bindEvents() {
     renderMeter();
   });
   shareButton.addEventListener("click", shareResult);
+  winShareButton.addEventListener("click", shareResult);
   resetButton.addEventListener("click", resetToday);
   statsButton.addEventListener("click", () => statsDialog.showModal());
+  settingsButton.addEventListener("click", () => settingsDialog.showModal());
   valuesButton.addEventListener("click", () => valuesDialog.showModal());
+  settingsDialog.addEventListener("change", (event) => {
+    if (event.target.name === "mode") switchMode(event.target.value);
+  });
   keyboard.addEventListener("click", handleKeyboardClick);
   document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
 }
@@ -433,6 +591,7 @@ function handleKeyboardClick(event) {
 
 async function init() {
   resetFromUrl = consumeResetParam();
+  settings = loadSettings();
   puzzle = getPuzzle();
   state = loadState();
   renderKeyboard();

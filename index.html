@@ -47,6 +47,10 @@
           <span class="label">Puzzle</span>
           <strong id="puzzleNumber">#000</strong>
         </div>
+        <div>
+          <span class="label">Mode</span>
+          <strong id="modeLabel">Classic</strong>
+        </div>
       </section>
 
       <section class="goal-panel" aria-label="Daily bank goal">
@@ -58,7 +62,7 @@
           <span id="goalProgressFill"></span>
         </div>
         <div class="goal-meta">
-          <span id="goalWords">0 / 25 goal words</span>
+          <span id="goalWords">0 / 10 goal words</span>
           <span id="goalStatus">0% to daily goal</span>
         </div>
       </section>
@@ -97,7 +101,7 @@
       <section class="status-row" aria-live="polite">
         <p id="message">Dictionary words only. Exact-value words count.</p>
         <div class="status-actions">
-          <button id="shareButton" class="text-button ghost" type="button">Share</button>
+          <button id="shareButton" class="text-button ghost" type="button" hidden>Share</button>
         </div>
       </section>
 
@@ -115,6 +119,7 @@
       </section>
 
       <footer class="danger-zone">
+        <button id="settingsButton" class="text-button ghost" type="button">Settings</button>
         <button id="resetButton" class="text-button danger" type="button">Reset</button>
       </footer>
     </main>
@@ -142,6 +147,47 @@
           <button class="icon-button small" value="close" aria-label="Close values">×</button>
         </div>
         <div id="valueGrid" class="value-grid"></div>
+      </form>
+    </dialog>
+
+    <dialog id="settingsDialog" class="modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button class="icon-button small" value="close" aria-label="Close settings">×</button>
+        </div>
+        <fieldset class="mode-options" aria-label="Game mode">
+          <legend>Mode</legend>
+          <label>
+            <input type="radio" name="mode" value="classic" />
+            <span>
+              <strong>Classic</strong>
+              Fixed A=1 through Z=26 pricing.
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="mode" value="market" />
+            <span>
+              <strong>Daily Market</strong>
+              All letters reprice daily within rarity bands.
+            </span>
+          </label>
+        </fieldset>
+      </form>
+    </dialog>
+
+    <dialog id="winDialog" class="modal win-modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <h2>Congrats</h2>
+          <button class="icon-button small" value="close" aria-label="Close result">×</button>
+        </div>
+        <div class="win-summary">
+          <span class="label">Daily bank reached</span>
+          <strong id="winScore">$0.00</strong>
+          <p id="winMeta">0 words in 0 tries</p>
+        </div>
+        <button id="winShareButton" class="text-button primary full-width" type="button">Share</button>
       </form>
     </dialog>
 
