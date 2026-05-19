@@ -63,6 +63,11 @@
         </div>
       </section>
 
+      <section id="cluePanel" class="clue-panel" aria-label="Mode clue" hidden>
+        <span id="clueLabel" class="label">Clue</span>
+        <p id="clueText">Find a word that matches the clue.</p>
+      </section>
+
       <section class="entry-panel" aria-label="Submit a word">
         <form id="wordForm" autocomplete="off">
           <label for="wordInput">Find words worth today’s target</label>
@@ -168,6 +173,20 @@
               Every letter gets a daily random 1-26 value.
             </span>
           </label>
+          <label>
+            <input type="radio" name="mode" value="definition" />
+            <span>
+              <strong>Definition Hunt</strong>
+              Find the word that matches a daily meaning clue.
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="mode" value="category" />
+            <span>
+              <strong>Category Hunt</strong>
+              Bank words from a daily theme.
+            </span>
+          </label>
         </fieldset>
       </form>
     </dialog>
@@ -187,6 +206,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=15d2842" type="module"></script>
+    <script src="./app.js?v=1d1d154" type="module"></script>
   </body>
 </html>

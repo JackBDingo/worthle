@@ -123,6 +123,7 @@ h2 {
 
 .target-band,
 .goal-panel,
+.clue-panel,
 .entry-panel,
 .word-list-panel,
 .keyboard-panel {
@@ -169,6 +170,18 @@ h2 {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 900;
+}
+
+.clue-panel {
+  padding: 12px 14px;
+}
+
+.clue-panel p {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: clamp(1rem, 3.8vw, 1.18rem);
+  font-weight: 850;
+  line-height: 1.35;
 }
 
 .target-band {

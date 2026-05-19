@@ -15,6 +15,7 @@ const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 const START_DATE = Date.UTC(2026, 0, 1);
 const MS_PER_DAY = 86400000;
 const DAILY_GOAL_WORDS = 10;
+const CATEGORY_GOAL_WORDS = 5;
 const SETTINGS_KEY = "worthle-settings";
 const MODES = {
   classic: {
@@ -24,8 +25,70 @@ const MODES = {
   market: {
     label: "Market",
     description: "Daily all-letter pricing."
+  },
+  definition: {
+    label: "Definition",
+    description: "Solve from a daily meaning clue."
+  },
+  category: {
+    label: "Category",
+    description: "Bank words from a daily theme."
   }
 };
+
+const DEFINITION_PUZZLES = [
+  { word: "precise", clue: "careful, exact, and accurate" },
+  { word: "refine", clue: "to improve by making small, careful changes" },
+  { word: "vivid", clue: "clear, bright, and easy to imagine" },
+  { word: "scarce", clue: "hard to find because there is not much available" },
+  { word: "sturdy", clue: "strongly built and not easily damaged" },
+  { word: "brisk", clue: "quick, active, and energetic" },
+  { word: "humble", clue: "not acting as if you are more important than others" },
+  { word: "curious", clue: "eager to learn or know more" },
+  { word: "fragile", clue: "easily broken or damaged" },
+  { word: "candid", clue: "honest and direct, even when the truth is uncomfortable" },
+  { word: "nimble", clue: "quick and light in movement or thought" },
+  { word: "serene", clue: "calm, peaceful, and untroubled" },
+  { word: "modest", clue: "not showy or boastful" },
+  { word: "urgent", clue: "needing immediate attention" },
+  { word: "lavish", clue: "rich, generous, or more than enough" },
+  { word: "clever", clue: "quick to understand or invent solutions" }
+];
+
+const CATEGORY_PUZZLES = [
+  {
+    category: "weather",
+    words: ["storm", "cloud", "rain", "snow", "wind", "frost", "humid", "sunny", "thunder", "breeze"]
+  },
+  {
+    category: "kitchen",
+    words: ["spoon", "knife", "plate", "bowl", "stove", "oven", "whisk", "pantry", "kettle", "simmer"]
+  },
+  {
+    category: "movement",
+    words: ["walk", "run", "crawl", "leap", "glide", "slide", "sprint", "wander", "climb", "drift"]
+  },
+  {
+    category: "emotion",
+    words: ["happy", "angry", "calm", "glad", "grief", "worry", "delight", "envy", "joyful", "lonely"]
+  },
+  {
+    category: "tools",
+    words: ["hammer", "saw", "drill", "level", "pliers", "wrench", "chisel", "clamp", "sander", "file"]
+  },
+  {
+    category: "nature",
+    words: ["river", "stone", "forest", "meadow", "flower", "branch", "valley", "moss", "ocean", "summit"]
+  },
+  {
+    category: "music",
+    words: ["piano", "drum", "violin", "guitar", "rhythm", "melody", "chorus", "tempo", "harmony", "lyric"]
+  },
+  {
+    category: "money",
+    words: ["coin", "cash", "price", "value", "budget", "profit", "market", "wallet", "dollar", "credit"]
+  }
+];
 
 const form = document.querySelector("#wordForm");
 const input = document.querySelector("#wordInput");
@@ -39,6 +102,9 @@ const goalProgressFill = document.querySelector("#goalProgressFill");
 const goalWords = document.querySelector("#goalWords");
 const goalStatus = document.querySelector("#goalStatus");
 const puzzleNumber = document.querySelector("#puzzleNumber");
+const cluePanel = document.querySelector("#cluePanel");
+const clueLabel = document.querySelector("#clueLabel");
+const clueText = document.querySelector("#clueText");
 const currentWord = document.querySelector("#currentWord");
 const currentValue = document.querySelector("#currentValue");
 const currentDelta = document.querySelector("#currentDelta");
@@ -87,10 +153,12 @@ function money(value) {
 }
 
 function currentScore() {
-  return state.found.length * puzzle.target;
+  return state.found.reduce((sum, word) => sum + wordValue(word), 0);
 }
 
 function isGoalReached() {
+  if (settings.mode === "category") return state.found.length >= CATEGORY_GOAL_WORDS;
+  if (settings.mode === "definition") return state.found.includes(puzzle.answer);
   return currentScore() >= puzzle.goal;
 }
 
@@ -154,6 +222,11 @@ function buildLetterValues(dateKey) {
   letterValues = settings.mode === "market" ? buildMarketValues(dateKey) : buildClassicValues();
 }
 
+function modeIndex(dayIndex, mode, length) {
+  const seed = hashSeed(mode + "-" + dayIndex);
+  return seed % length;
+}
+
 function consumeResetParam() {
   const url = new URL(window.location.href);
   const resetValue = url.searchParams.get("reset");
@@ -191,11 +264,42 @@ function getPuzzle() {
   const seed = SEED_WORDS[((dayIndex % SEED_WORDS.length) + SEED_WORDS.length) % SEED_WORDS.length];
   const dateKey = localMidnight.toISOString().slice(0, 10);
   buildLetterValues(dateKey);
+
+  if (settings.mode === "definition") {
+    const entry = DEFINITION_PUZZLES[modeIndex(dayIndex, "definition", DEFINITION_PUZZLES.length)];
+    return {
+      id: dayIndex + 1,
+      dateKey,
+      target: wordValue(entry.word),
+      goal: wordValue(entry.word),
+      answer: entry.word,
+      promptLabel: "Definition",
+      prompt: "Find a word meaning " + entry.clue + ".",
+      goalWords: 1
+    };
+  }
+
+  if (settings.mode === "category") {
+    const entry = CATEGORY_PUZZLES[modeIndex(dayIndex, "category", CATEGORY_PUZZLES.length)];
+    return {
+      id: dayIndex + 1,
+      dateKey,
+      target: null,
+      goal: CATEGORY_GOAL_WORDS,
+      category: entry.category,
+      allowedWords: entry.words,
+      promptLabel: "Category",
+      prompt: "Bank " + CATEGORY_GOAL_WORDS + " words related to " + entry.category + ".",
+      goalWords: CATEGORY_GOAL_WORDS
+    };
+  }
+
   return {
     id: dayIndex + 1,
     dateKey,
     target: wordValue(seed),
-    goal: wordValue(seed) * DAILY_GOAL_WORDS
+    goal: wordValue(seed) * DAILY_GOAL_WORDS,
+    goalWords: DAILY_GOAL_WORDS
   };
 }
 
@@ -270,7 +374,7 @@ function recordFirstFind() {
 function recordFoundWord() {
   const stats = loadStats();
   stats.total += 1;
-  stats.money += puzzle.target;
+  stats.money += state.lastValue;
   stats.best = Math.max(stats.best, state.found.length);
   saveStats(stats);
 }
@@ -286,16 +390,21 @@ function renderStats() {
 
 function renderGoal() {
   const score = currentScore();
-  const progress = Math.min(100, Math.round((score / puzzle.goal) * 100));
+  const targetCount = puzzle.goalWords || DAILY_GOAL_WORDS;
+  const progress =
+    settings.mode === "category"
+      ? Math.min(100, Math.round((state.found.length / targetCount) * 100))
+      : Math.min(100, Math.round((score / puzzle.goal) * 100));
 
   goalCurrent.textContent = money(score);
-  goalTarget.textContent = money(puzzle.goal);
+  goalTarget.textContent = settings.mode === "category" ? targetCount + " words" : money(puzzle.goal);
   goalProgressFill.style.width = progress + "%";
-  goalWords.textContent = state.found.length + " / " + DAILY_GOAL_WORDS + " goal words";
-  goalStatus.textContent = score >= puzzle.goal ? "Daily goal reached" : progress + "% to daily goal";
+  goalWords.textContent = state.found.length + " / " + targetCount + " goal words";
+  goalStatus.textContent = isGoalReached() ? "Daily goal reached" : progress + "% to daily goal";
 }
 
 function describeValue(value) {
+  if (settings.mode === "category") return value === 0 ? "Start typing" : "Category guess";
   const diff = value - puzzle.target;
   if (value === 0) return "Start typing";
   if (diff === 0) return "Exact match";
@@ -392,7 +501,7 @@ function makeKey(label, value, className) {
 }
 
 function render() {
-  targetValue.textContent = cents(puzzle.target);
+  targetValue.textContent = puzzle.target === null ? "Any" : cents(puzzle.target);
   foundCount.textContent = state.found.length;
   scoreValue.textContent = money(currentScore());
   puzzleNumber.textContent = "#" + String(puzzle.id).padStart(3, "0");
@@ -403,6 +512,9 @@ function render() {
     settings.mode === "market"
       ? "Daily market values · tap to inspect"
       : "A=1 · B=2 · C=3 · … · Z=26";
+  cluePanel.hidden = !puzzle.prompt;
+  clueLabel.textContent = puzzle.promptLabel || "Clue";
+  clueText.textContent = puzzle.prompt || "";
   renderGoal();
   renderMeter();
   renderFoundWords();
@@ -455,15 +567,20 @@ function submitWord(event) {
     setMessage(word.toUpperCase() + " is not in the dictionary.");
   } else if (state.found.includes(word)) {
     setMessage(word.toUpperCase() + " is already banked.");
-  } else if (value !== puzzle.target) {
+  } else if (settings.mode === "definition" && word !== puzzle.answer) {
+    const diff = value - puzzle.target;
+    setMessage(cents(value) + " is not the clue word" + (diff === 0 ? "." : " and is " + Math.abs(diff) + (diff < 0 ? " low." : " high.")));
+  } else if (settings.mode === "category" && !puzzle.allowedWords.includes(word)) {
+    setMessage(word.toUpperCase() + " is not one of today's " + puzzle.category + " words.");
+  } else if (settings.mode !== "category" && value !== puzzle.target) {
     const diff = value - puzzle.target;
     setMessage(cents(value) + " is " + Math.abs(diff) + (diff < 0 ? " low." : " high."));
   } else {
-    const wasGoalMet = currentScore() >= puzzle.goal;
+    const wasGoalMet = isGoalReached();
     state.found.push(word);
     recordFirstFind();
     recordFoundWord();
-    const isGoalMet = currentScore() >= puzzle.goal;
+    const isGoalMet = isGoalReached();
     if (!wasGoalMet && isGoalMet) {
       state.completedAt = new Date().toISOString();
       state.congratsSeen = false;
@@ -471,7 +588,7 @@ function submitWord(event) {
     setMessage(
       !wasGoalMet && isGoalMet
         ? "Daily goal hit."
-        : "Banked " + word.toUpperCase() + ". Keep going."
+        : "Banked " + word.toUpperCase() + (settings.mode === "category" ? " for " + puzzle.category + "." : ". Keep going.")
     );
     input.value = "";
   }
@@ -491,9 +608,9 @@ function shareText() {
   return [
     "Worthle #" + puzzle.id,
     MODES[settings.mode].label + " mode",
-    "Target " + cents(puzzle.target),
+    puzzle.prompt ? puzzle.prompt : "Target " + cents(puzzle.target),
     found + " word" + (found === 1 ? "" : "s") + " banked in " + tries + (tries === 1 ? " try" : " tries"),
-    "Score " + money(found * puzzle.target) + " / " + money(puzzle.goal)
+    "Score " + money(currentScore())
   ].join("\n");
 }
 
